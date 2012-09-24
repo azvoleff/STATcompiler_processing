@@ -1,12 +1,15 @@
 ###############################################################################
 # Cleans DHS data for use in R.
+base_dir <- "M:/Data/Global/DHS/Statcompiler_Processing"
+
+processed_data_dir <- paste(base_dir, "Processed_data", sep="/")
 
 # For "excel_filename", give the name of the cleaned csv file (with footnotes 
 # and extra columns deleted, and variables renamed) without the ".csv" 
 # extension. "skipped_rows" indicates how many header rows to skip. Skip all 
 # the header rows but the first column header row before the data begins (the 
 # row that contains the variable names to be used in R).
-raw_data_dir <-"Raw_data"
+raw_data_dir <- paste(base_dir, "Raw_data", sep="/")
 data_filenames <- dir(raw_data_dir)[grepl("_table_only.csv", dir(raw_data_dir))]
 
 # The regular expressions used to select out the country, year, and any 
@@ -249,5 +252,8 @@ for (file_num in 1:length(data_filenames)) {
     # Delete the now unused Heading.Original column
     DHS_data <- DHS_data[-which(names(DHS_data)=="Heading.Original")]
 
-    save(DHS_data, file=paste("Processed_data/", file_prefix, "_processed.Rdata", sep=""))
+    save(DHS_data, file=paste(processed_data_dir, paste(file_prefix, 
+                                                        "_processed.Rdata", 
+                                                        sep=""),
+                              sep="/"))
 }

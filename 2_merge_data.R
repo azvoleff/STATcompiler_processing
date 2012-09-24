@@ -1,11 +1,15 @@
 ###############################################################################
 # Merge DHS datafiles for use in R.
-#
 require(foreign)
 require(rgdal)
 require(maptools)
 
-processed_data_dir <-"Processed_data"
+base_dir <- "M:/Data/Global/DHS/Statcompiler_Processing"
+
+processed_data_dir <- paste(base_dir, "Processed_data", sep="/")
+merged_data_dir <- paste(base_dir, "Merged_data", sep="/")
+debug_data_dir <- paste(base_dir, "Debug_data", sep="/")
+
 data_filenames <- dir(processed_data_dir)[grepl("_processed.Rdata",
         dir(processed_data_dir))]
 
@@ -31,8 +35,8 @@ for (file in data_filenames[2:length(data_filenames)]) {
 ###############################################################################
 # The country key assigns a continent and ISO code to each country, for use in 
 # analyzing results by continent.
-country_key <- read.csv("Country_Key/DHS_country_key.csv", encoding="latin1",
-        stringsAsFactors=FALSE)
+country_key <- read.csv("Country_Key/DHS_country_key.csv", encoding="latin1", 
+                        stringsAsFactors=FALSE)
 merged_data <- merge(country_key, merged_data)
 
 ###############################################################################
@@ -44,7 +48,7 @@ merged_data <- merge(country_key, merged_data)
 ###############################################################################
 # The region shapefile assigns the conservation zone percent in, area in, etc. 
 # and region areas to the regional data.
-DHS_regions <- readOGR("Shapefiles", "DHS_Regions")
+DHS_regions <- readOGR(paste(base_dir, "Shapefiles", sep="/"), "DHS_Regions")
 # Fix the zero values for AreaIn variables - when read from the DHS_regions 
 # there are NAs in all the places that should be zero for these variables
 DHS_regions$WWFInPct[is.na(DHS_regions$WWFInPct)] <- 0
@@ -91,7 +95,9 @@ regional_data <- regional_data[!((regional_data$Group.Type == "Region") &
     (combined_names %in% higher.regions.combined_names)),]
 
 regional_data_pre_merge <- regional_data
-write.csv(regional_data_pre_merge, file="regional_data_pre_merge.csv")
+write.csv(regional_data_pre_merge, file=paste(debug_data_dir, 
+                                              "regional_data_pre_merge.csv", 
+                                              sep="/"))
 
 # Do two merges, then rbind them together. The first will cover the rows where 
 # each survey year has specific GIS boundary data, the second will cover rows 
@@ -125,7 +131,8 @@ regional_data <- merged_regional_data
 pre_merge_ISO_region <- paste(regional_data_pre_merge$CountryISO, regional_data_pre_merge$Group.lowest)
 post_merge_ISO_region <- paste(merged_regional_data$CountryISO, merged_regional_data$Group.lowest)
 unmatched_regions <- regional_data_pre_merge[!(pre_merge_ISO_region %in% post_merge_ISO_region),]
-write.csv(unmatched_regions, file="unmatched_regions.csv")
+write.csv(unmatched_regions, file=paste(debug_data_dir, 
+                                        "unmatched_regions.csv", sep="/"))
 
 # Now add the regional rows back to the main dataset.
 merged_data <- merge(regional_data, merged_data, all=TRUE)
@@ -270,10 +277,14 @@ regional_data <- cbind(regional_data[first_columns[-1]],
 merged_data$Survey_Year <- as.ordered(as.character(merged_data$Survey_Year))
 merged_data$GISDataYr <- as.ordered(as.character(merged_data$GISDataYr))
 
-save(merged_data, file="Merged_data/DHS_merged_data.Rdata")
-write.csv(merged_data, file="Merged_data/DHS_merged_data.csv", row.names=FALSE, na=".")
+save(merged_data, file=paste(merged_data_dir, "DHS_merged_data.Rdata", 
+                             sep="/"))
+write.csv(merged_data, file=paste(merged_data_dir, "DHS_merged_data.csv", 
+                                  sep="/"), row.names=FALSE, na=".")
 #write.dta(merged_data, file="Merged_data/DHS_merged_data.dta")
 
 # Save the spatial dataframe and shapefile
-save(regional_data, file="Merged_data/DHS_merged_data_regional_sp.Rdata")
-#writeOGR(regional_data, "Merged_data", "DHS_merged_data_regional_shapefile", "ESRI Shapefile")
+save(regional_data, file=paste(merged_data_dir, 
+                               "DHS_merged_data_regional_sp.Rdata", sep="/"))
+#writeOGR(regional_data, "Merged_data", "DHS_merged_data_regional_shapefile", 
+#"ESRI Shapefile")

@@ -4,7 +4,11 @@
 
 require("foreign")
 
-load("Merged_data/DHS_merged_data.Rdata")
+base_dir <- "M:/Data/Global/DHS/Statcompiler_Processing"
+
+merged_data_dir <- paste(base_dir, "Merged_data", sep="/")
+
+load(paste(merged_data_dir, "DHS_merged_data.Rdata", sep="/"))
 
 countries <- data.frame(Country=unique(merged_data$Country))
 continents <- merged_data$Continent[match(countries$Country, merged_data$Country)]
@@ -33,14 +37,19 @@ countries$ISO <- reorder(countries$ISO, 1:nrow(countries))
 countries$Country <- reorder(countries$Country, 1:nrow(countries))
 countries$Continent <- reorder(countries$Continent, 1:nrow(countries))
 
-save(countries, file="Merged_data/DHS_merged_data_surveys_by_country.Rdata")
-write.csv(countries, file="Merged_data/DHS_merged_data_surveys_by_country.csv",
+save(countries, file=paste(merged_data_dir, 
+                           "DHS_merged_data_surveys_by_country.Rdata", 
+                           sep="/"))
+write.csv(countries, file=paste(merged_data_dir, 
+                                "DHS_merged_data_surveys_by_country.csv", 
+                                sep="/"),
         row.names=FALSE)
-#write.dta(countries, file="Merged_data/DHS_merged_data_surveys_by_country.dta")
+#write.dta(countries, file=paste(merged_data_dir, "DHS_merged_data_surveys_by_country.dta", sep="/"))
 
 require(ggplot2)
 q <- qplot(ISO, NumSurveys, geom="bar", ylab="Number of surveys",
         xlab="Country ISO Code", colour=Continent, data=countries)
 q + opts(axis.text.x=theme_text(angle=90, hjust=1, size=6))
-ggsave("Merged_data/DHS_merged_data_surveys_by_country.png", width=9,
+ggsave(paste(merged_data_dir, "DHS_merged_data_surveys_by_country.png", 
+             sep="/"), width=9,
         height=6.5, dpi=300)
