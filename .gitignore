@@ -1,0 +1,6 @@
+.Rhistory
+.RData
+*.swp
+*.rst
+*.rdb
+*.rdx
