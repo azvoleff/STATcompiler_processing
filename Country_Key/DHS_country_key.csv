@@ -1,4 +1,4 @@
-Country,Continent,CountryISO
+Country,Continent,CC_3
 Albania,Europe,ALB
 Angola,Africa,AGO
 Armenia,Asia,ARM
@@ -12,6 +12,7 @@ Burkina Faso,Africa,BFA
 Burundi,Africa,BDI
 Cambodia,Asia,KHM
 Cameroon,Africa,CMR
+Cape Verde,Africa,CPV
 CAR,Africa,CAF
 Chad,Africa,TCD
 Colombia,South America,COL
@@ -35,6 +36,7 @@ Haiti,North America,HTI
 Honduras,North America,HND
 India,Asia,IND
 Indonesia,Asia,IDN
+Jamaica,North America,JAM
 Jordan,Asia,JOR
 Kazakhstan,Asia,KAZ
 Kenya,Africa,KEN
@@ -43,6 +45,7 @@ Lesotho,Africa,LSO
 Liberia,Africa,LBR
 Madagascar,Africa,MDG
 Malawi,Africa,MWI
+Maldives,Asia,MDV
 Mali,Africa,MLI
 Mauritania,Africa,MRT
 Mexico,North America,MEX
@@ -58,7 +61,9 @@ Pakistan,Asia,PAK
 Paraguay,South America,PRY
 Peru,South America,PER
 Philippines,Asia,PHL
+Romania,Europe,ROU
 Rwanda,Africa,RWA
+Sao Tome and Principe,Africa,STP
 Senegal,Africa,SEN
 Sierra Leone,Africa,SLE
 South Africa,Africa,ZAF
@@ -68,6 +73,7 @@ Swaziland,Africa,SWZ
 Tanzania,Africa,TZA
 Thailand,Asia,THA
 Tibet,Asia,CHN
+Timor-Leste,Asia,TLS
 Togo,Africa,TGO
 Trinidad and Tobago,North America,TTO
 Tunisia,Africa,TUN
