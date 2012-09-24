@@ -1,0 +1,82 @@
+Country,Continent,CountryISO
+Albania,Europe,ALB
+Angola,Africa,AGO
+Armenia,Asia,ARM
+Azerbaijan,Asia,AZE
+Bangladesh,Asia,BGD
+Benin,Africa,BEN
+Bolivia,South America,BOL
+Botswana,Africa,BWA
+Brazil,South America,BRA
+Burkina Faso,Africa,BFA
+Burundi,Africa,BDI
+Cambodia,Asia,KHM
+Cameroon,Africa,CMR
+CAR,Africa,CAF
+Chad,Africa,TCD
+Colombia,South America,COL
+Comoros,Africa,COM
+Congo (Brazzaville),Africa,COG
+Congo Democratic Republic,Africa,COD
+Cote d'Ivoire,Africa,CIV
+Dominican Republic,North America,DOM
+Ecuador,South America,ECU
+Egypt,Africa,EGY
+El Salvador,North America,SLV
+Eritrea,Africa,ERI
+Ethiopia,Africa,ETH
+Gabon,Africa,GAB
+Georgia,Asia,GEO
+Ghana,Africa,GHA
+Guatemala,North America,GTM
+Guinea,Africa,GIN
+Guyana,Africa,GUY
+Haiti,North America,HTI
+Honduras,North America,HND
+India,Asia,IND
+Indonesia,Asia,IDN
+Jordan,Asia,JOR
+Kazakhstan,Asia,KAZ
+Kenya,Africa,KEN
+Kyrgyz Republic,Asia,KGZ
+Lesotho,Africa,LSO
+Liberia,Africa,LBR
+Madagascar,Africa,MDG
+Malawi,Africa,MWI
+Mali,Africa,MLI
+Mauritania,Africa,MRT
+Mexico,North America,MEX
+Moldova,Europe,MDA
+Morocco,Africa,MAR
+Mozambique,Africa,MOZ
+Namibia,Africa,NAM
+Nepal,Asia,NPL
+Nicaragua,North America,NIC
+Niger,Africa,NER
+Nigeria,Africa,NGA
+Pakistan,Asia,PAK
+Paraguay,South America,PRY
+Peru,South America,PER
+Philippines,Asia,PHL
+Rwanda,Africa,RWA
+Senegal,Africa,SEN
+Sierra Leone,Africa,SLE
+South Africa,Africa,ZAF
+Sri Lanka,Asia,LKA
+Sudan,Africa,SDN
+Swaziland,Africa,SWZ
+Tanzania,Africa,TZA
+Thailand,Asia,THA
+Tibet,Asia,CHN
+Togo,Africa,TGO
+Trinidad and Tobago,North America,TTO
+Tunisia,Africa,TUN
+Turkey,Asia,TUR
+Turkmenistan,Asia,TKM
+Uganda,Africa,UGA
+Ukraine,Europe,UKR
+Uzbekistan,Asia,UZB
+Vietnam,Asia,VNM
+Yemen,Asia,YEM
+Zambia,Africa,ZMB
+Zimbabwe,Africa,ZWE
