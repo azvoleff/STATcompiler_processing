@@ -4,22 +4,30 @@ require(foreign)
 require(rgdal)
 require(maptools)
 
-source("0_data_path.R")
+base_dir <- "M:/Data/Global/DHS/Statcompiler_Processing"
 
 processed_data_dir <- paste(base_dir, "Processed_data", sep="/")
 merged_data_dir <- paste(base_dir, "Merged_data", sep="/")
 debug_data_dir <- paste(base_dir, "Debug_data", sep="/")
 
+data_filenames <- dir(processed_data_dir)[grepl("_processed.Rdata",
+        dir(processed_data_dir))]
+
+load(paste(processed_data_dir, data_filenames[1], sep="/"))
+merged_data <- DHS_data
+# Delete the footnote column before merging the datasets because it can lead to 
+# additional rows being mistakenly added for matching groups if a country has 
+# two differently numbered footnotes for different surveys.
+merged_data <- DHS_data[-grep("Footnote", names(DHS_data))]
+
 ###############################################################################
 # Read in and merge the statcompiler datasets.
 ###############################################################################
-data_filenames <- dir(processed_data_dir)[grepl("_processed.Rdata",
-        dir(processed_data_dir))]
-load(paste(processed_data_dir, data_filenames[1], sep="/"))
-merged_data_long <- DHS_data
+
 for (file in data_filenames[2:length(data_filenames)]) {
     load(paste(processed_data_dir, file, sep="/"))
-    merged_data_long <- merge(merged_data_long, DHS_data, all=TRUE, sort=TRUE)
+    DHS_data <- DHS_data[-grep("Footnote", names(DHS_data))]
+    merged_data <- merge(merged_data, DHS_data, all=TRUE, sort=TRUE)
 }
 
 ###############################################################################
@@ -29,48 +37,11 @@ for (file in data_filenames[2:length(data_filenames)]) {
 # analyzing results by continent.
 country_key <- read.csv("Country_Key/DHS_country_key.csv", encoding="latin1", 
                         stringsAsFactors=FALSE)
-merged_data_long <- merge(country_key, merged_data_long, all=TRUE)
-# Make up a country code for Tibet since DHS lists it with a missing code.
-merged_data_long$CC[merged_data_long$Country == "Tibet"] <- "TB"
-merged_data_long$CC_3[merged_data_long$Country == "Tibet"] <- "TIB"
+merged_data <- merge(country_key, merged_data)
 
 ###############################################################################
-# Convert dataset from long to wide format
+# Do final data cleaning.
 ###############################################################################
-merged_data_long$Var_name <- with(merged_data_long, paste(abbreviate(gsub('[-().]', ' ', Table)), 
-                                          abbreviate(gsub('[-().]', ' ', 
-                                                          Indicator)), 
-                                          sep="_"))
-var_name_key <- with(merged_data_long, data.frame(Var_name, Topic, Table, Indicator))
-var_name_key <- var_name_key[!duplicated(var_name_key$Var_name), ]
-
-# Add an ID variable uniquely identifying each characteristic row
-merged_data_long$RowID <- with(merged_data_long, paste(CC_3, Survey, 
-                                             abbreviate(Category), 
-                                             abbreviate(iconv(Characteristic, 
-                                                              to="ASCII")), 
-                                             sep="-"))
-
-write.csv(var_name_key, file=paste(merged_data_dir, "Var_name_key.csv", 
-                                   sep="/"), row.names=FALSE)
-
-merged_data <- reshape(merged_data_long, timevar="Var_name", v.names="Value",
-                       idvar=c("RowID", "Country", "Continent", "CC_3", "CC", 
-                               "Year", "Survey", "Category", "Characteristic", 
-                               "Characteristic.parent"), 
-                       direction="wide", drop=c("Topic", "Table", "Indicator"))
-
-merged_data_long <- merged_data_long[, !grepl("^(Topic|Table|Indicator)$", 
-                                             names(merged_data_long))]
-merged_data <- melt(merged_data_long, id.vars=c("RowID", "Country", 
-                                                "Continent", "CC_3", "CC", 
-                                                "Year", "Survey", "Category", 
-                                                "Characteristic", 
-                                                "Characteristic.parent"), 
-                    measure.vars="Value", variable_name="Var_name")
-
-merged_data_recast  <- cast(merged_data, RowID + Country + Continent + CC + CC_3 + Year + Survey 
-     + Category + Characteristic + Characteristic.parent ~ Var_name)
 
 ###############################################################################
 # Handle region shapefile file
@@ -90,14 +61,14 @@ DHS_regions$CIInkm[is.na(DHS_regions$CIInkm)] <- 0
 #DHS_regions <- spCbind(DHS_regions, GISPolyID)
 
 # Drop the Country field from the DHS Regions dataset so it doesn't get 
-# duplicated during the merge (the CC_3 field will be used for the 
+# duplicated during the merge (the CountryISO field will be used for the 
 # matching).
-DHS_regions <- DHS_regions[, names(DHS_regions) != "Country"]
+DHS_regions <- DHS_regions[,names(DHS_regions) != "Country"]
 
 # Get a subset of just the regional data to deal with the merging. Remove these 
 # rows from the main dataset, as they will be added back after the merge.
-regional_data <- merged_data[merged_data$Category %in% c("Region", "Sub-region"), ]
-non_regional_data <- merged_data[!(merged_data$Category %in% c("Region", "Sub-region")), ]
+regional_data <- merged_data[merged_data$Group.Type %in% c("Region", "Sub-region"),]
+merged_data <- merged_data[!(merged_data$Group.Type %in% c("Region", "Sub-region")),]
 
 # Need to remove from the regional data any rows where overlapping sub-regional 
 # and regional data are listed (where data is listed twice for the same 
@@ -109,14 +80,19 @@ non_regional_data <- merged_data[!(merged_data$Category %in% c("Region", "Sub-re
 # To deal with the case where there are two upper-level regions within the 
 # dataset that have the same name, make a vector combining country, survey, and 
 # region name all into a single field "combined_names".
-combined_names <- paste(regional_data$Country, regional_data$Survey,
-        regional_data$Characteristic)
-parent_regions_combined_names <- paste(regional_data$Country, regional_data$Survey,
-        regional_data$Characteristic.parent)
+
+# Before doing this, take care of Egypt - don't use the sub-regions in Egypt, 
+# only upper level regions (see Will Anderson's notes on this).
+regional_data <- regional_data[!((regional_data$Group.Type == "Sub-region") &
+    (regional_data$CountryISO == "EGY")),]
+
+combined_names <- paste(regional_data$Country, regional_data$Survey_Year,
+        regional_data$Region)
 # Now use the combined names to remove regions where there are overlapping 
 # higher and lower-level regions.
-regional_data <- regional_data[!((regional_data$Category == "Region") &
-    (combined_names %in% parent_regions_combined_names)), ]
+higher.regions.combined_names <- unique(combined_names[!is.na(regional_data$Group.sub)])
+regional_data <- regional_data[!((regional_data$Group.Type == "Region") &
+    (combined_names %in% higher.regions.combined_names)),]
 
 regional_data_pre_merge <- regional_data
 write.csv(regional_data_pre_merge, file=paste(debug_data_dir, 
@@ -126,63 +102,66 @@ write.csv(regional_data_pre_merge, file=paste(debug_data_dir,
 # Do two merges, then rbind them together. The first will cover the rows where 
 # each survey year has specific GIS boundary data, the second will cover rows 
 # where all survey years are covered by the same boundary data.
-regional_data_year_specific_rows <- DHS_regions$GISDataYr != "All" & DHS_regions$GISDataYr != ""
-regional_data_other_rows <- DHS_regions$GISDataYr == "All" | DHS_regions$GISDataYr == ""
+regional_data_year_specific_rows <- DHS_regions$GISDataYr!="All" & DHS_regions$GISDataYr!=""
+regional_data_other_rows <- DHS_regions$GISDataYr=="All" | DHS_regions$GISDataYr==""
 
 merge_one <- merge(regional_data, DHS_regions[regional_data_year_specific_rows,],
-        by.x=c("CC_3", "Characteristic", "Year"),
+        by.x=c("CountryISO", "Group.lowest", "Survey_Year"),
         by.y=c("CountryISO","Region", "GISDataYr"))
 # Add in a GISDataYr column to merge_one since it was eliminated in the 
 # merge (since for these rows the Survey_Year and GISDataYr are the same).
-merge_one <- cbind(merge_one, GISDataYr=merge_one$Year)
+merge_one <- cbind(merge_one, GISDataYr=merge_one$Survey_Year)
 merge_two <- merge(regional_data, DHS_regions[regional_data_other_rows,],
-        by.x=c("CC_3", "Characteristic"),
+        by.x=c("CountryISO", "Group.lowest"),
         by.y=c("CountryISO","Region"))
-regional_data <- rbind(merge_one, merge_two)
+merged_regional_data <- rbind(merge_one, merge_two)
+regional_data <- merged_regional_data
 
 # Correct NAs due to error in Nambia - Otjozondjupa region. Otjozondjupa falls 
 # in the Nambia WWF conservation zone, and is roughly the same distance from 
 # the CI zones as the Namibia - Omaheke region.  TODO: calculate the correct 
 # distance in the GIS shapefile.
-#otjo_row <- which((regional_data$CC_3 == "NAM") &
+#otjo_row <- which((regional_data$CountryISO == "NAM") &
 #        (regional_data$Group.lowest == "Otjozondjupa"))
 #regional_data[otjo_row,]$WWFNrName <- "Namibia"
 #regional_data[otjo_row,]$WWFNrkm <- 0
 #regional_data[otjo_row,]$CINrName <- "Succulent Karoo"
 #regional_data[otjo_row,]$CINrkm <- 905824.171767
 
-pre_merge_ISO_characteristic <- paste(regional_data_pre_merge$CC_3, regional_data_pre_merge$Characteristic)
-post_merge_ISO_characteristic <- paste(regional_data$CC_3, regional_data$Characteristic)
-unmatched_regions <- regional_data_pre_merge[!(pre_merge_ISO_characteristic %in% post_merge_ISO_characteristic),]
+pre_merge_ISO_region <- paste(regional_data_pre_merge$CountryISO, regional_data_pre_merge$Group.lowest)
+post_merge_ISO_region <- paste(merged_regional_data$CountryISO, merged_regional_data$Group.lowest)
+unmatched_regions <- regional_data_pre_merge[!(pre_merge_ISO_region %in% post_merge_ISO_region),]
 write.csv(unmatched_regions, file=paste(debug_data_dir, 
                                         "unmatched_regions.csv", sep="/"))
 
 # Now add the regional rows back to the main dataset.
-merged_data <- merge(regional_data, non_regional_data, all=TRUE)
+merged_data <- merge(regional_data, merged_data, all=TRUE)
 
 merged_data <- merged_data[names(merged_data) != "DHSSubrgn"]
 
 # Ensure the Country fields are all filled out properly.  
-merged_data$Country <- country_key$Country[match(merged_data$CC_3,
-        country_key$CC_3)]
+merged_data$Country <- country_key$Country[match(merged_data$CountryISO,
+        country_key$CountryISO)]
 
 # Sort by Continent, then Country, etc., 
 merged_data <- merged_data[order(merged_data$Continent, merged_data$Country,
-        merged_data$Year, merged_data$Survey, merged_data$Category, 
-        merged_data$Characteristic), ]
+        merged_data$Survey_Year, merged_data$Group.Type, merged_data$Group,
+        merged_data$Group.sub),]
 
 ###############################################################################
 # Add in the SDT and wealth indicators (these apply to regional data only).
 ###############################################################################
-regional_data <- merged_data[merged_data$Category %in% c("Region", "Sub-region"),]
-merged_data <- merged_data[!(merged_data$Category %in% c("Region", "Sub-region")),]
+regional_data <- merged_data[merged_data$Group.Type %in% c("Region", "Sub-region"),]
+merged_data <- merged_data[!(merged_data$Group.Type %in% c("Region", "Sub-region")),]
 # For the wealth and SDT indicators, need a function to compute quartile 
 # rankings:
 qrank <- function(values, rev=FALSE) {
     quarts <- quantile(values, c(.25, .5, .75, 1), na.rm=TRUE)
     ranks <- rep(NA, length(values))
+
     if (rev==TRUE) rankorder <- 4:1
     else rankorder <- 1:4
+
     for (n in 1:4) {
         ranks[(values <= quarts[n]) & is.na(ranks)] <- rankorder[n]
     } 
@@ -287,7 +266,7 @@ row_id <- 1:nrow(merged_data)
 merged_data <- cbind(row_id, merged_data)
 
 # Reorder the columns so the order makes more sense
-first_columns <- c("row_id", "CC_3", "Country", "Continent", "Survey", "Survey_Year", "GISDataYr", "GISPolyID", "Category", "Group",  "Group.sub", "Group.lowest", "EnteredBy", "Perimkm", "Areakm", "WWFInName", "WWFInkm", "WWFInPct","WWFNrName", "WWFNrkm", "CIInName", "CIInkm", "CIInPct", "CINrName", "CINrkm", "SDT", "RNI_pred", "Td_pred", "Wealth")
+first_columns <- c("row_id", "CountryISO", "Country", "Continent", "Survey", "Survey_Year", "GISDataYr", "GISPolyID", "Group.Type", "Group",  "Group.sub", "Group.lowest", "EnteredBy", "Perimkm", "Areakm", "WWFInName", "WWFInkm", "WWFInPct","WWFNrName", "WWFNrkm", "CIInName", "CIInkm", "CIInPct", "CINrName", "CINrkm", "SDT", "RNI_pred", "Td_pred", "Wealth")
 merged_data <- cbind(merged_data[first_columns],
         merged_data[!(names(merged_data) %in% first_columns)])
 regional_data <- cbind(regional_data[first_columns[-1]],
