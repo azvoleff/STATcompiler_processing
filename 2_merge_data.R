@@ -53,10 +53,10 @@ merged_data_long <- merged_data_long[!(merged_data_long$Characteristic == ""), ]
 merged_data_long$By.Variable[is.na(merged_data_long$By.Variable)] <- ""
 merged_data_long$Var_name <- with(merged_data_long,
                                   paste(Topic_Short,
-                                        abbreviate(gsub('[-().]', ' ', Table)), 
-                                        abbreviate(gsub('[-().]', ' ', 
+                                        abbreviate(gsub("('s)|[-().,]", ' ', Table)), 
+                                        abbreviate(gsub("('s)|[-().,]", ' ', 
                                                         Indicator)), 
-                                        abbreviate(gsub('[-().]', ' ', 
+                                        abbreviate(gsub("('s)|[-().,]", ' ', 
                                                         By.Variable)), 
                                         sep="_"))
 merged_data_long$Var_name <- gsub(' ', '_', merged_data_long$Var_name)
@@ -64,7 +64,7 @@ merged_data_long$Var_name <- gsub(' ', '_', merged_data_long$Var_name)
 # undefined
 merged_data_long$Var_name <- gsub('_$', '', merged_data_long$Var_name)
 var_name_key <- with(merged_data_long, data.frame(Var_name, Topic, Table, 
-                                                  Indicator))
+                                                  Indicator, By.Variable))
 var_name_key <- var_name_key[!duplicated(var_name_key$Var_name), ]
 var_name_key <- with(var_name_key, var_name_key[order(Var_name, Topic, Table, 
                                                       Indicator), ])
@@ -89,7 +89,7 @@ merged_data_long$RowID <- with(merged_data_long,
                                                       to="ASCII", sub="")), 
                                      sep="_"))
 
-merged_data  <- recast(merged_data_long, RowID + Country + Continent + 
+merged_data <- recast(merged_data_long, RowID + Country + Continent + 
                               CC + CC_3 + Year + Survey + Category + 
                               Characteristic + Characteristic.parent ~ 
                               Var_name, measure.var="Value")
