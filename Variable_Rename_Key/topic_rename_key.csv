@@ -1,8 +1,12 @@
 Topic_Long,Topic_Short
+Antenatal care,AnNtCr
+Household durable goods,DrbGds
 Household population by age and sex,HHPop
+Infant and child mortality by background characteristics (10 year rates),ICM
+Infant and child mortality by demographic characteristics (10 year rates),ICM
+Nutritional status of children in interviewed households by background characteristics (WHO standard),ChNtr
+Occupation [Men],OccMen
+Occupation,OccResp
+Problems in accessing health care,PrbAcHlth
 Total fertility rate and proportion of women pregnant,FRt
 Wanted fertility rates,WFRt
-Infant and child mortality by demographic characteristics (10 year rates),ICM
-Infant and child mortality by background characteristics (10 year rates),ICM
-Nutritional status of children in interviewed households by background characteristics (WHO standard),ChNtr
-Household durable goods,DrbGds
