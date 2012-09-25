@@ -51,7 +51,6 @@ merged_data_long <- merged_data_long[!is.na(merged_data_long$Characteristic), ]
 merged_data_long <- merged_data_long[!(merged_data_long$Characteristic == ""), ]
 
 merged_data_long$By.Variable[is.na(merged_data_long$By.Variable)] <- ""
-
 merged_data_long$Var_name <- with(merged_data_long,
                                   paste(Topic_Short,
                                         abbreviate(gsub('[-().]', ' ', Table)), 
@@ -61,16 +60,18 @@ merged_data_long$Var_name <- with(merged_data_long,
                                                         By.Variable)), 
                                         sep="_"))
 merged_data_long$Var_name <- gsub(' ', '_', merged_data_long$Var_name)
-
 # Strip the following underscores on Var_names for which the By.Variable is 
 # undefined
 merged_data_long$Var_name <- gsub('_$', '', merged_data_long$Var_name)
-
 var_name_key <- with(merged_data_long, data.frame(Var_name, Topic, Table, 
                                                   Indicator))
 var_name_key <- var_name_key[!duplicated(var_name_key$Var_name), ]
-
+var_name_key <- with(var_name_key, var_name_key[order(Var_name, Topic, Table, 
+                                                      Indicator), ])
+write.csv(var_name_key, file=paste(merged_data_dir, "variable_name_key.csv", 
+                                   sep="/"), row.names=FALSE)
 dupe_rows <- duplicated(merged_data_long)
+
 if (sum(dupe_rows) > 0) {
     warning(paste("Removing", sum(dupe_rows), "duplicated rows from 
                   merged_data_long"))
@@ -88,13 +89,16 @@ merged_data_long$RowID <- with(merged_data_long,
                                                       to="ASCII", sub="")), 
                                      sep="_"))
 
-write.csv(var_name_key, file=paste(merged_data_dir, "Var_name_key.csv", 
-                                   sep="/"), row.names=FALSE)
-
 merged_data  <- recast(merged_data_long, RowID + Country + Continent + 
                               CC + CC_3 + Year + Survey + Category + 
                               Characteristic + Characteristic.parent ~ 
                               Var_name, measure.var="Value")
+###############################################################################
+# Post-merge cleaning
+###############################################################################
+
+# Eliminate a data entry error (WFRt_Wnfr_Wtfr of 151.8)
+merged_data$WFRt_Wnfr_Wtfr[merged_data$WFRt_Wnfr_Wtfr>20] <- NA
 
 ###############################################################################
 # Handle region shapefile file
@@ -108,10 +112,6 @@ DHS_regions$WWFInPct[is.na(DHS_regions$WWFInPct)] <- 0
 DHS_regions$WWFInkm[is.na(DHS_regions$WWFInkm)] <- 0
 DHS_regions$CIInPct[is.na(DHS_regions$CIInPct)] <- 0
 DHS_regions$CIInkm[is.na(DHS_regions$CIInkm)] <- 0
-
-#GISPolyID <- paste(DHS_regions$CountryISO, DHS_regions$Region, 
-#                   DHS_regions$GISDataYr, sep="-")
-#DHS_regions <- spCbind(DHS_regions, GISPolyID)
 
 # Drop the Country field from the DHS Regions dataset so it doesn't get 
 # duplicated during the merge (the CC_3 field will be used for the matching).
@@ -155,8 +155,8 @@ regional_data_other_rows <- DHS_regions$GISDataYr == "All" | DHS_regions$GISData
 merge_one <- merge(regional_data, DHS_regions[regional_data_year_specific_rows,],
         by.x=c("CC_3", "Characteristic", "Year"),
         by.y=c("CountryISO","Region", "GISDataYr"))
-# Add in a GISDataYr column to merge_one since it was eliminated in the 
-# merge (since for these rows the Survey_Year and GISDataYr are the same).
+# Add in a GISDataYr column to merge_one since it was eliminated in the merge 
+# (since for these rows the Year and GISDataYr are the same).
 merge_one <- cbind(merge_one, GISDataYr=merge_one$Year)
 merge_two <- merge(regional_data, DHS_regions[regional_data_other_rows,],
         by.x=c("CC_3", "Characteristic"),
@@ -194,11 +194,15 @@ merged_data <- merged_data[order(merged_data$Continent, merged_data$Country,
         merged_data$Year, merged_data$Survey, merged_data$Category, 
         merged_data$Characteristic), ]
 
+if (sum(duplicated(merged_data$RowsID)) > 0) {
+    stop("RowID values in merged_data are not unique")
+}
+
 ###############################################################################
 # Add in the SDT and wealth indicators (these apply to regional data only).
 ###############################################################################
 regional_data <- merged_data[merged_data$Category %in% c("Region", "Sub-region"),]
-merged_data <- merged_data[!(merged_data$Category %in% c("Region", "Sub-region")),]
+other_data <- merged_data[!(merged_data$Category %in% c("Region", "Sub-region")),]
 # For the wealth and SDT indicators, need a function to compute quartile 
 # rankings:
 qrank <- function(values, rev=FALSE) {
@@ -215,20 +219,16 @@ qrank <- function(values, rev=FALSE) {
 ###############################################################################
 # Add SDT columns
 # SDT_Fert is the average of the actual TFR and the wanted TFR
-SDT_Fert <- (regional_data$Wnfr_Wtfr + regional_data$Frtr_Ttfr) / 2
-# Eliminate a data entry error (SDT_Fert of 154.15)
-SDT_Fert[SDT_Fert>20] <- NA
+SDT_Fert <- (regional_data$WFRt_Wnfr_Wtfr + regional_data$FRt_Frtr_Ttfr) / 2
 
-# SDT_Fert_Q is the adjusted quartile ranking of SDT_Fert.
-#
-
-# Rows in the first quartile are assigned an SDT_Fert_Q of 4, rows in the 
-# second quartile an SDT_Fert_Q of 3, etc, so use the rev=TRUE option to qrank.
+# SDT_Fert_Q is the adjusted quartile ranking of SDT_Fert. Rows in the first 
+# quartile are assigned an SDT_Fert_Q of 4, rows in the second quartile an 
+# SDT_Fert_Q of 3, etc, so use the rev=TRUE option to qrank.
 SDT_Fert_Q <- qrank(SDT_Fert, rev=TRUE)
 
 # Infant mortality rate is "Mrtr_Im10". Again, lower percentages indicate higher 
 # level of demog. transition, so use the rev=TRUE ranking.
-SDT_IMR_Q <- qrank(regional_data$Mrtr_Im10, rev=TRUE)
+SDT_IMR_Q <- qrank(regional_data$ICM_Mrtr_Im10, rev=TRUE)
 
 # SDT_Pop15 is an indicator of population momentum, the percentage of the 
 # population under age 15. Again, lower percentages indicate higher level of 
@@ -250,13 +250,11 @@ SDT_Missing <- is.na(SDT_Fert_Q) + is.na(SDT_IMR_Q) + is.na(SDT_Pop15_Q)
 # means of projecting RNI and Td was devised by David, and uses the observed 
 # correlation between the log of the TFR and the RNI to predict RNI and Td when 
 # the TFR is known.
-# First: Ignore an erroneous TFR of 156.5 in India, by setting it to NA
-regional_data$Frtr_Ttfr[regional_data$Frtr_Ttfr > 20] <- NA
 obs_pop_data <- read.csv("RNI_prediction/Observed_RNI.csv")
 RNI_model <- lm(RNI ~ LN_TFR, data=obs_pop_data)
-DHS_obs_TFR <- data.frame(LN_TFR=log(regional_data$Frtr_Ttfr))
+DHS_log_obs_TFR <- data.frame(LN_TFR=log(regional_data$FRt_Frtr_Ttfr))
 
-RNI_pred <- predict(RNI_model, DHS_obs_TFR)
+RNI_pred <- predict(RNI_model, DHS_log_obs_TFR)
 RNI_pred[is.infinite(RNI_pred)] <- NA
 # Calculate the predicted doubling times as log(2) / log(1+r/100)
 Td_pred <- log(2) / log(1 + (RNI_pred / 100))
@@ -290,7 +288,7 @@ regional_data <- cbind(regional_data, Wealth)
 
 ###############################################################################
 # Now add the regional data back in to the main dataset.
-merged_data <- merge(merged_data, regional_data, all=TRUE)
+merged_data <- merge(other_data, regional_data, all=TRUE)
 
 # Make a version of the regional DHS data that can be saved as an R 
 # SpatialPolygonsDataFrame and as a shapefile.
@@ -304,21 +302,29 @@ regional_data <- spCbind(DHS_regions, regional_data)
 ###############################################################################
 # Write out data
 ###############################################################################
-# Add a variable to allow later unique identification of each observation 
-# (useful to figure out later on which row a particular case came from).
-row_id <- 1:nrow(merged_data)
-merged_data <- cbind(row_id, merged_data)
-
 # Reorder the columns so the order makes more sense
-first_columns <- c("row_id", "CC_3", "Country", "Continent", "Survey", "Survey_Year", "GISDataYr", "GISPolyID", "Category", "Group",  "Group.sub", "Group.lowest", "EnteredBy", "Perimkm", "Areakm", "WWFInName", "WWFInkm", "WWFInPct","WWFNrName", "WWFNrkm", "CIInName", "CIInkm", "CIInPct", "CINrName", "CINrkm", "SDT", "RNI_pred", "Td_pred", "Wealth")
-merged_data <- cbind(merged_data[first_columns],
-        merged_data[!(names(merged_data) %in% first_columns)])
-regional_data <- cbind(regional_data[first_columns[-1]],
-        regional_data[!(names(regional_data) %in% first_columns[-1])])
+first_columns <- c("RowID", "CC", "CC_3", "Country", "Continent", "Survey", 
+                   "Year", "GISDataYr", "GISPolyID", "Category", 
+                   "Characteristic", "Characteristic.parent", "EnteredBy", 
+                   "Perimkm", "Areakm", "WWFInName", "WWFInkm", 
+                   "WWFInPct","WWFNrName", "WWFNrkm", "CIInName", "CIInkm", 
+                   "CIInPct", "CINrName", "CINrkm", "WDPAIInNm", "WDPAIInkm", 
+                   "WDPAIInPct", "WDPANInNm", "WDPANInkm", "WDPANInPct", "SDT", 
+                   "RNI_pred", "Td_pred", "Wealth")
 
-# Reorder the Survey_Year and GISDataYr factors to ensure the levels are in 
+merged_data_beg_cols <- merged_data[first_columns]
+merged_data_end_cols <- merged_data[!(names(merged_data) %in% first_columns)]
+merged_data_end_cols <- merged_data_end_cols[sort(names(merged_data_end_cols))]
+merged_data <- cbind(merged_data_beg_cols, merged_data_end_cols)
+
+regional_data_beg_cols <- regional_data[first_columns]
+regional_data_end_cols <- as.data.frame(regional_data[!(names(regional_data) %in% first_columns)])
+regional_data_end_cols <- regional_data_end_cols[sort(names(regional_data_end_cols))]
+regional_data <- spCbind(regional_data_beg_cols, regional_data_end_cols)
+
+# Reorder the Year and GISDataYr factors to ensure the levels are in 
 # chronological order.
-merged_data$Survey_Year <- as.ordered(as.character(merged_data$Survey_Year))
+merged_data$Year <- as.ordered(as.character(merged_data$Year))
 merged_data$GISDataYr <- as.ordered(as.character(merged_data$GISDataYr))
 
 save(merged_data, file=paste(merged_data_dir, "DHS_merged_data.Rdata", 
