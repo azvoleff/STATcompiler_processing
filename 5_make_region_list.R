@@ -3,8 +3,7 @@
 
 require("foreign")
 
-
-base_dir <- "M:/Data/Global/DHS/Statcompiler_Processing"
+source("0_data_path.R")
 
 merged_data_dir <- paste(base_dir, "Merged_data", sep="/")
 
