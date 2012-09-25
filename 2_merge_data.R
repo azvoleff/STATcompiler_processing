@@ -39,10 +39,11 @@ merged_data_long$CC_3[merged_data_long$Country == "Tibet"] <- "TIB"
 # Pre-cleaning and conversion to wide format
 ###############################################################################
 topic_rename_key <- read.csv("Variable_Rename_Key/topic_rename_key.csv", stringsAsFactors=FALSE)
+merged_data_long$Topic_Short <- merged_data_long$Topic
 for (row_num in 1:nrow(topic_rename_key)) {
     long_topic <- topic_rename_key[row_num, ]$Topic_Long
     short_topic <- topic_rename_key[row_num, ]$Topic_Short
-    merged_data_long$Topic[merged_data_long$Topic == long_topic] <- short_topic
+    merged_data_long$Topic_Short[merged_data_long$Topic_Short == long_topic] <- short_topic
 }
 
 merged_data_long <- merged_data_long[!is.na(merged_data_long$Value), ]
@@ -52,7 +53,7 @@ merged_data_long <- merged_data_long[!(merged_data_long$Characteristic == ""), ]
 merged_data_long$By.Variable[is.na(merged_data_long$By.Variable)] <- ""
 
 merged_data_long$Var_name <- with(merged_data_long,
-                                  paste(Topic,
+                                  paste(Topic_Short,
                                         abbreviate(gsub('[-().]', ' ', Table)), 
                                         abbreviate(gsub('[-().]', ' ', 
                                                         Indicator)), 
@@ -71,9 +72,8 @@ var_name_key <- var_name_key[!duplicated(var_name_key$Var_name), ]
 
 dupe_rows <- duplicated(merged_data_long)
 if (sum(dupe_rows) > 0) {
-    table(merged_data_long$Topic[dupe_rows])
-    warning(paste("Removing", sum(dupe_rows),
-                                      "duplicated rows from merged_data_long"))
+    warning(paste("Removing", sum(dupe_rows), "duplicated rows from 
+                  merged_data_long"))
 }
 merged_data_long <- merged_data_long[!duplicated(merged_data_long), ]
 
@@ -233,8 +233,8 @@ SDT_IMR_Q <- qrank(regional_data$Mrtr_Im10, rev=TRUE)
 # SDT_Pop15 is an indicator of population momentum, the percentage of the 
 # population under age 15. Again, lower percentages indicate higher level of 
 # demog. transition, so use the rev=TRUE ranking.
-SDT_Pop15 <- with(regional_data, HH_Pop_Total_0_4 + HH_Pop_Total_5_9 +
-        HH_Pop_Total_10_14)
+SDT_Pop15 <- with(regional_data, HHPop_Hsma_0_4_Totl + HHPop_Hsma_5_9_Totl +
+        HHPop_Hsma_1014_Totl)
 SDT_Pop15_Q <- qrank(SDT_Pop15, rev=TRUE)
 
 # To correct for missing data, average the available quartile rankings for each 
@@ -261,8 +261,9 @@ RNI_pred[is.infinite(RNI_pred)] <- NA
 # Calculate the predicted doubling times as log(2) / log(1+r/100)
 Td_pred <- log(2) / log(1 + (RNI_pred / 100))
 
-regional_data <- cbind(regional_data, SDT, RNI_pred, Td_pred, HH_Pop_Total_0_15=SDT_Pop15)
+regional_data <- cbind(regional_data, SDT, RNI_pred, Td_pred, HHPop_Hsma_0_15_Totl=SDT_Pop15)
 
+###############################################################################
 # Now make a wealth index based on percentage ownership of:
 #   Bicycle
 #   Motorcycle
@@ -272,23 +273,22 @@ regional_data <- cbind(regional_data, SDT, RNI_pred, Td_pred, HH_Pop_Total_0_15=
 #   Television
 #   Refrigerator
 #   None of the above
-Possess_Rankings <- qrank(regional_data$Possess_None, rev=TRUE)
-Possess_Rankings <- cbind(Possess_Rankings, qrank(regional_data$Possess_Bicycle))
-Possess_Rankings <- cbind(Possess_Rankings, qrank(regional_data$Possess_Motorcycle))
-Possess_Rankings <- cbind(Possess_Rankings, qrank(regional_data$Possess_Privatecar))
-Possess_Rankings <- cbind(Possess_Rankings, qrank(regional_data$Possess_Radio))
-Possess_Rankings <- cbind(Possess_Rankings, qrank(regional_data$Possess_Telephone))
-Possess_Rankings <- cbind(Possess_Rankings, qrank(regional_data$Possess_Television))
-Possess_Rankings <- cbind(Possess_Rankings, qrank(regional_data$Possess_Refrigerator))
-
+Possess_Rankings <- qrank(regional_data$DrbGds_Hshp_Notp, rev=TRUE)
+Possess_Rankings <- cbind(Possess_Rankings, qrank(regional_data$DrbGds_Hshp_Bcyc))
+Possess_Rankings <- cbind(Possess_Rankings, qrank(regional_data$DrbGds_Hshp_Mtrc))
+Possess_Rankings <- cbind(Possess_Rankings, qrank(regional_data$DrbGds_Hshp_Prvc))
+Possess_Rankings <- cbind(Possess_Rankings, qrank(regional_data$DrbGds_Hshp_Radi))
+Possess_Rankings <- cbind(Possess_Rankings, qrank(regional_data$DrbGds_Hshp_Tlph))
+Possess_Rankings <- cbind(Possess_Rankings, qrank(regional_data$DrbGds_Hshp_Tlvs))
+Possess_Rankings <- cbind(Possess_Rankings, qrank(regional_data$DrbGds_Hshp_Rfrg))
 Possess_Missings <- apply(is.na(Possess_Rankings), 1, sum)
-
 # To correct for missing data, average the available quartile rankings for each 
 # row and subtract 1 to have scale range from 1-4
 Wealth <- apply(Possess_Rankings, 1, mean, na.rm=TRUE)
 
 regional_data <- cbind(regional_data, Wealth)
 
+###############################################################################
 # Now add the regional data back in to the main dataset.
 merged_data <- merge(merged_data, regional_data, all=TRUE)
 
