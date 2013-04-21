@@ -9,7 +9,7 @@ merged_data_dir <- paste(base_dir, "Merged_data", sep="/")
 
 load(paste(merged_data_dir, "DHS_merged_data_regional.Rdata", sep="/"))
 
-regions_list <- regional_data[c("CC_3", "Survey", "Year", "GISDataYr", "Category", "Characteristic", "Characteristic.parent")]
+regions_list <- regional_data[c("CC_3", "Continent", "Survey", "Year", "GISDataYr", "Category", "Characteristic", "Characteristic.parent", "Perimkm", "Areakm")]
 
 new_order <- with(regions_list, order(CC_3, Survey, Year, Category, Characteristic, Characteristic.parent))
 regions_list <- regions_list[new_order,]
