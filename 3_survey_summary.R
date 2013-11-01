@@ -47,9 +47,9 @@ write.csv(countries, file=paste(merged_data_dir,
 #write.dta(countries, file=paste(merged_data_dir, "DHS_merged_data_surveys_by_country.dta", sep="/"))
 
 require(ggplot2)
-q <- qplot(CC_3, NumSurveys, geom="bar", ylab="Number of surveys",
+q <- qplot(CC_3, NumSurveys, geom="bar", stat='identity', ylab="Number of surveys",
         xlab="Country ISO Code", colour=Continent, data=countries)
-q + opts(axis.text.x=theme_text(angle=90, hjust=1, size=6))
+q + theme(axis.text.x=element_text(angle=90, vjust=.2, size=6))
 ggsave(paste(merged_data_dir, "DHS_merged_data_surveys_by_country.png", 
              sep="/"), width=9,
         height=6.5, dpi=300)
